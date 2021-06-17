@@ -1,1 +1,1 @@
-# TeamPetri-FI
+# Team Petri-FI
