@@ -14,7 +14,22 @@
  *
  */
 
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1351.h>
+#include <SPI.h>
 
+// Screen dimensions
+#define SCREEN_WIDTH  128
+#define SCREEN_HEIGHT 128 // Change this to 96 for 1.27" OLED.
+
+// You can use any (4 or) 5 pins
+#define SCLK_PIN 2
+#define MOSI_PIN 3
+#define DC_PIN   4
+#define CS_PIN   5
+#define RST_PIN  6
+
+//define buttons
 #define Up 11
 #define Down 9
 
@@ -88,7 +103,7 @@ void setup(void) {
   time = millis() - time;
 }
 
-void printTop(int T_setting, int T_setting_prev, int time_setting, int time_setting_prev) {
+void printBanner(int T_setting, int T_setting_prev, int time_setting, int time_setting_prev) {
 //prints the yellow text at the top that shows the selected setting while powered on.
   tft.setCursor(0,10);
   tft.setTextColor(YELLOW);
@@ -235,7 +250,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     
     delay(500);
     //resets screen words to black (clears characters)
-    printTop(T_setting, T_setting_prev, time_setting, time_setting_prev);
+    printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
     tft.setCursor(0, 43);
     tft.setTextColor(BLACK);
     tft.print(T);
@@ -285,7 +300,7 @@ void loop() {
   selectButtonState = digitalRead(selectButton);
 
   // rename T_setting, it sounds so similar to time_setting. -kenton
-  printTop(T_setting, T_setting_prev, time_setting, time_setting_prev);
+  printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
   
   if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
 	 // TODO we should make a comment table explaining what menu options mean what -kenton.
