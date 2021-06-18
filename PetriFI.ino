@@ -103,16 +103,46 @@ void setup(void) {
   time = millis() - time;
 }
 
+void loop() {
+
+  selectButtonState = digitalRead(selectButton);
+
+  // rename T_setting, it sounds so similar to time_setting. -kenton
+  printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
+  
+  if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
+	 // TODO we should make a comment table explaining what menu options mean what -kenton.
+    menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
+    //tft.fillScreen(BLACK);
+    tft.fillRect(0, 40, 128, 60, BLACK);
+  }
+  if (menuOpt == 0) {
+    setTemp(menuOpt);
+  }
+  else if(menuOpt == 1) {
+    setTime(menuOpt);
+  }
+  else { // only entered if menuOpt is 2. -kenton
+    runningAvg[0] = T_setting;
+    runningAvg[1] = T_setting;
+    runningAvg[2] = T_setting;
+    runningAvg[3] = T_setting;
+    runningAvg[4] = T_setting;
+
+    startUp();
+  }
+}
+
 void printBanner(int T_setting, int T_setting_prev, int time_setting, int time_setting_prev) {
 //prints the yellow text at the top that shows the selected setting while powered on.
   tft.setCursor(0,10);
   tft.setTextColor(YELLOW);
-  tft.print("Curr Temp Set (C): "); // Thank you for using Celsius -kenton
+  tft.print("Curr Temp Set (C): "); // Temperature set prompt
   tft.print(T_setting);
   
   tft.setCursor(0,20);
   tft.setTextColor(YELLOW);
-  tft.print("Curr Time Set (h): "); // Maybe add more clarity to units -kenton
+  tft.print("Curr Time Set (h): "); // Time set prompt
   tft.print(time_setting);
   
 }
@@ -293,36 +323,6 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 
   }
   digitalWrite(transistor, LOW);
-}
-
-void loop() {
-
-  selectButtonState = digitalRead(selectButton);
-
-  // rename T_setting, it sounds so similar to time_setting. -kenton
-  printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
-  
-  if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
-	 // TODO we should make a comment table explaining what menu options mean what -kenton.
-    menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
-    //tft.fillScreen(BLACK);
-    tft.fillRect(0, 40, 128, 60, BLACK);
-  }
-  if (menuOpt == 0) {
-    setTemp(menuOpt);
-  }
-  else if(menuOpt == 1) {
-    setTime(menuOpt);
-  }
-  else { // only entered if menuOpt is 2. -kenton
-    runningAvg[0] = T_setting;
-    runningAvg[1] = T_setting;
-    runningAvg[2] = T_setting;
-    runningAvg[3] = T_setting;
-    runningAvg[4] = T_setting;
-
-    startUp();
-  }
 }
 
 // This appears to be a general method that either turns on or off the transistor,
