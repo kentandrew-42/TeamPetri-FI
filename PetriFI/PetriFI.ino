@@ -104,19 +104,33 @@ void setup(void) {
   Serial.println("Initializing...");
 
   uint16_t time = millis();
-  tft_screen.fillRect(0, 0, 128, 128, BLACK);
+  tft_screen.fillRect(0, 0, 128, 128, BLACK); // FIXME use variables, not 128
   time = millis() - time;
 }
 
 void loop() {
+  /*
+    Main loop function of the Arduino.
 
+	 Each loop, this functions reads if the select button has been pressed.
+	 If not, it continues to look for Up/Down input for setTemp or setTime,
+	 until the temperature and time have been selected.
+
+	 When the select button is pressed, we increment menuOpt to specify the
+	 next menu option (temp, time, and so on).
+	 Finally, when all menu options have been selected, startUp() is called,
+	 starting the incubation and heating the chamber.
+
+	 Returns: none
+  */
+
+  // Reads if the select button has been pressed.
   selectButtonState = digitalRead(selectButton);
 
-  // rename temp_setting, it sounds so similar to time_setting. -kenton
+  // Prints banner info about the current temperature and time settings.
   printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
   
   if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
-	 // TODO we should make a comment table explaining what menu options mean what -kenton.
     menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
     //tft_screen.fillScreen(BLACK);
     tft_screen.fillRect(0, 40, 128, 60, BLACK);
@@ -134,12 +148,17 @@ void loop() {
     runningAvg[3] = temp_setting;
     runningAvg[4] = temp_setting;
 
-    startUp();
+    startUp(); // Starts heating the incubation chamber
   }
 }
 
 void printBanner(int temp_setting, int temp_setting_prev, int time_setting, int time_setting_prev) {
-//prints the yellow text at the top that shows the selected setting while powered on.
+  /*
+    Prints the yellow text at the top of the screen. Shows the selected setting while powered on.
+	 Includes the temperature and duration settings for the incubation period.
+
+	 Returns: none
+  */
   tft_screen.setCursor(0,10);
   tft_screen.setTextColor(YELLOW);
   tft_screen.print("Curr Temp Set (C): "); // Temperature set prompt
@@ -155,6 +174,8 @@ void printBanner(int temp_setting, int temp_setting_prev, int time_setting, int 
 void setTemp(int m) { // menu option to set temperature
   /*
     Sets the temperature for the next incubation period.
+
+	 Returns: none
   */
 
   // where the heck is "int m" used in this method? -kenton
@@ -250,6 +271,13 @@ float readTemp() {
 }
 
 void startUp() {
+  /*
+    This is the function that is called immediately after all incubation settings
+	 have been selected. This function manages the initial heating of the chamber
+	 to the desired temperature, at which point startRun() is called.
+
+	 Returns: none
+  */
   T = readTemp();
   // while loop exits when temp gets up to adequate temperature, it appears -kenton
   while (T < temp_setting-0.5) {
@@ -276,15 +304,22 @@ void dutyCycle(float period, float onPercentage) {
 
 // ambiguous title: how is it different from startUp? -kenton
 void startRun() { // ask user whether to start run (we are not doing this currently)
+  /*
+    Manages the incubation period after the startUp() function heats the 
+	 chamber to the desired temperature. This function continues the heating
+	 of the incubation chamber for the full duration, and
+  */
+
   int currentTime = -1;
   int previousTime;
   //for (int t = 0; t < time_setting*60*30*1000; t++) { // run for prescribed amount of time
   uint32_t period = time_setting*60*60000L; // 5 minutes
+
   // lmao is that a stackexchange link in that next comment :D -kenton
   for (uint32_t tStart = millis();  (millis()-tStart) < period;  ) { //https://arduino.stackexchange.com/questions/22272/how-do-i-run-a-loop-for-a-specific-amount-of-time
 
-    // report temperature every hour to serial log
-	 // I don't think every hour is enough to ensure that it was never out-of-bounds -kenton
+    // record temperature every hour to serial log
+	 // FIXME every hour is not enough to record. We want greater resolution.
     previousTime = currentTime;
     currentTime = (millis()-tStart)/3600000; //get current full hours elapsed
     if (currentTime != previousTime) {
@@ -314,10 +349,11 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     tft_screen.setCursor(0, 59);
     tft_screen.setTextColor(WHITE);
     tft_screen.println("Finished Test was:"); // information on whether the internal temperature is at the correct temp over a trend of time
+
     if (finaltest == 1) { // build in the audio and visual alarms data here
       tft_screen.setCursor(0, 67); 
       tft_screen.setTextColor(BLACK);
-      tft_screen.print("SUCCESSFUL"); // what does "successful" and "not successful" mean here? -kenton
+      tft_screen.print("SUCCESSFUL");
       tft_screen.setCursor(0, 67);
       tft_screen.setTextColor(WHITE);
       tft_screen.print("NOT SUCCESSFUL");
@@ -349,11 +385,13 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 // This appears to be a general method that either turns on or off the transistor,
 // depending on where in the duty cycle we are. I would prefer two separate methods,
 // or at least a more descriptive title. I also can't tell what 0.3 and 0.5 mean. -kenton
-void transistorControl(){
+void transistorControl() {
   /*
     Controls the transistor. When transistor is turned on (HIGH), it allows power flow from
 	 the battery to the heaing pad. When the transistor is turned off (LOW), it stops this
 	 flow and turns off the heating pad.
+
+	 Returns: none
   */
   if (T > temp_setting-0.3){
     //turn off transistor, stop power flow from battery to the heating pad
@@ -456,6 +494,7 @@ void tftPrintTest() {
     tft_screen.print("OUT OF RANGE");
     if (out_range_counter >= 5) { // within 5 minutes, with a 15-second interval between measurements
       finaltest = 1; // in startRun(), this is meant to trigger the alarm/notification system -kenton
+		// TODO rename finaltest to something more descriptive.
     }
   }
 }
