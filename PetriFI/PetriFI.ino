@@ -19,7 +19,7 @@
 
 // Screen dimensions
 #define SCREEN_WIDTH  128
-#define SCREEN_HEIGHT 128 // FIXME Change this to 96 for 1.27" OLED.
+#define SCREEN_HEIGHT 128
 
 // You can use any (4 or) 5 pins
 #define SCLK_PIN 2
@@ -29,6 +29,7 @@
 #define RST_PIN  6
 
 // define buttons
+#define selectButton 10
 #define Up 11
 #define Down 9
 
@@ -75,8 +76,8 @@ float runningAvg[] = {0, 0, 0, 0, 0};
 float T_average;
 //int range = map(T, tempMin, tempMax, 0, 3);
 
-int T_setting = DEFAULT_TEMP; // use button to increment or decrement as necessary
-int T_setting_prev = DEFAULT_TEMP;
+int temp_setting = DEFAULT_TEMP; // use button to increment or decrement as necessary
+int temp_setting_prev = DEFAULT_TEMP;
 int time_setting = DEFAULT_TIME; // default time setting is 48 hours, use button to increment or decrement as necessary
 int time_setting_prev = DEFAULT_TIME; // default time setting is 48 hours, use button to increment or decrement as necessary
 
@@ -96,11 +97,11 @@ void setup(void) {
   digitalWrite(transistor, LOW);
   
   Serial.begin(9600);
-  Serial.println("hello!"); //FIXME improve intro text -kenton
+  Serial.println("Starting Up...");
   tft_screen.begin();
   tft_screen.fillScreen(BLACK);
 
-  Serial.println("init"); //FIXME improve this, too -kenton
+  Serial.println("Initializing...");
 
   uint16_t time = millis();
   tft_screen.fillRect(0, 0, 128, 128, BLACK);
@@ -111,8 +112,8 @@ void loop() {
 
   selectButtonState = digitalRead(selectButton);
 
-  // rename T_setting, it sounds so similar to time_setting. -kenton
-  printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
+  // rename temp_setting, it sounds so similar to time_setting. -kenton
+  printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
   
   if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
 	 // TODO we should make a comment table explaining what menu options mean what -kenton.
@@ -127,22 +128,22 @@ void loop() {
     setTime(menuOpt);
   }
   else { // only entered if menuOpt is 2
-    runningAvg[0] = T_setting;
-    runningAvg[1] = T_setting;
-    runningAvg[2] = T_setting;
-    runningAvg[3] = T_setting;
-    runningAvg[4] = T_setting;
+    runningAvg[0] = temp_setting;
+    runningAvg[1] = temp_setting;
+    runningAvg[2] = temp_setting;
+    runningAvg[3] = temp_setting;
+    runningAvg[4] = temp_setting;
 
     startUp();
   }
 }
 
-void printBanner(int T_setting, int T_setting_prev, int time_setting, int time_setting_prev) {
+void printBanner(int temp_setting, int temp_setting_prev, int time_setting, int time_setting_prev) {
 //prints the yellow text at the top that shows the selected setting while powered on.
   tft_screen.setCursor(0,10);
   tft_screen.setTextColor(YELLOW);
   tft_screen.print("Curr Temp Set (C): "); // Temperature set prompt
-  tft_screen.print(T_setting);
+  tft_screen.print(temp_setting);
   
   tft_screen.setCursor(0,20);
   tft_screen.setTextColor(YELLOW);
@@ -160,32 +161,32 @@ void setTemp(int m) { // menu option to set temperature
   DownState = digitalRead(Down);
   UpState = digitalRead(Up);
 
-  int T_setting_prev = T_setting;
+  int temp_setting_prev = temp_setting;
   
-  if ((DownState == HIGH) && (T_setting <= MAX_TEMP_SET) && (T_setting > MIN_TEMP_SET)) { 
-    T_setting--; // decrement the temperature setting by 1, given within the acceptable range
+  if ((DownState == HIGH) && (temp_setting <= MAX_TEMP_SET) && (temp_setting > MIN_TEMP_SET)) { 
+    temp_setting--; // decrement the temperature setting by 1, given within the acceptable range
 
   }
-  if ((UpState == HIGH) && (T_setting < MAX_TEMP_SET) && (T_setting >= MIN_TEMP_SET)) {
-    T_setting++; // increment the temperature setting by 1, given within the acceptable range
+  if ((UpState == HIGH) && (temp_setting < MAX_TEMP_SET) && (temp_setting >= MIN_TEMP_SET)) {
+    temp_setting++; // increment the temperature setting by 1, given within the acceptable range
     
   }  
 
-  if ((T_setting != T_setting_prev) || (firstTempSet == true)) {
+  if ((temp_setting != temp_setting_prev) || (firstTempSet == true)) {
     tft_screen.setCursor(0,10); // this code blots out the yellow print at the top while the temperature selection is occurring
     tft_screen.setTextColor(YELLOW);
     tft_screen.print("Curr Temp Set (C): ");
     tft_screen.setTextColor(BLACK);
-    tft_screen.print(T_setting_prev);
+    tft_screen.print(temp_setting_prev);
     tft_screen.setCursor(0,50); // display the selection in progress to the user.
     tft_screen.setTextColor(WHITE);
     tft_screen.println("Set temperature (C): ");
     tft_screen.setCursor(0,60);
     tft_screen.setTextColor(BLACK);
-    tft_screen.print(T_setting_prev);
+    tft_screen.print(temp_setting_prev);
     tft_screen.setCursor(0,60);
     tft_screen.setTextColor(MAGENTA);
-    tft_screen.print(T_setting);
+    tft_screen.print(temp_setting);
   }
 
   //delay(250);
@@ -251,7 +252,7 @@ float readTemp() {
 void startUp() {
   T = readTemp();
   // while loop exits when temp gets up to adequate temperature, it appears -kenton
-  while (T < T_setting-0.5) {
+  while (T < temp_setting-0.5) {
     tftPrintStartUp();
 	 // TODO I don't think we want to hard-code the duty cycle, we instead want a response algorithm -kenton
 	 // Oh, maybe this is JUST for getting the temperature up to the desired temp -kenton
@@ -300,7 +301,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     
     delay(500);
     //resets screen words to black (clears characters)
-    printBanner(T_setting, T_setting_prev, time_setting, time_setting_prev);
+    printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
     tft_screen.setCursor(0, 43);
     tft_screen.setTextColor(BLACK);
     tft_screen.print(T);
@@ -349,7 +350,12 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 // depending on where in the duty cycle we are. I would prefer two separate methods,
 // or at least a more descriptive title. I also can't tell what 0.3 and 0.5 mean. -kenton
 void transistorControl(){
-  if (T > T_setting-0.3){
+  /*
+    Controls the transistor. When transistor is turned on (HIGH), it allows power flow from
+	 the battery to the heaing pad. When the transistor is turned off (LOW), it stops this
+	 flow and turns off the heating pad.
+  */
+  if (T > temp_setting-0.3){
     //turn off transistor, stop power flow from battery to the heating pad
     digitalWrite(transistor, LOW);
     if (onStatus == 1) {
@@ -360,7 +366,7 @@ void transistorControl(){
     tft_screen.setTextSize(0);
     tft_screen.println("HEATING PAD OFF");
     onStatus = 0;
-  } else if (T < T_setting-0.5) {
+  } else if (T < temp_setting-0.5) {
     //turn on transistor, start power flow from battery to the heating pad if in range or below range
     digitalWrite(transistor, HIGH); // Cory's note: switched from high to low here
     if (onStatus == 0) {
@@ -438,7 +444,7 @@ void tftPrintTest() {
   //reads stored temperature and determines if the temperature falls within range
   tft_screen.setTextColor(WHITE);
   tft_screen.print("Test:");
-  if (T_average > T_setting-2 && T_average < T_setting+2) { // this is if the temperature is in range
+  if (T_average > temp_setting-2 && T_average < temp_setting+2) { // this is if the temperature is in range
     out_range_counter = 0;
     tft_screen.setCursor(30, 51);
     tft_screen.print("IN RANGE");
