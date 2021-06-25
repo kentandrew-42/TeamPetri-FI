@@ -104,7 +104,7 @@ void setup(void) {
   Serial.println("Initializing...");
 
   uint16_t time = millis();
-  tft_screen.fillRect(0, 0, 128, 128, BLACK); // FIXME use variables, not 128
+  tft_screen.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
   time = millis() - time;
 }
 
@@ -133,7 +133,7 @@ void loop() {
   if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
     menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
     //tft_screen.fillScreen(BLACK);
-    tft_screen.fillRect(0, 40, 128, 60, BLACK);
+    tft_screen.fillRect(0, 40, SCREEN_WIDTH, 60, BLACK);
   }
   if (menuOpt == 0) {
     setTemp(menuOpt);
@@ -173,7 +173,8 @@ void printBanner(int temp_setting, int temp_setting_prev, int time_setting, int 
 
 void setTemp(int m) { // menu option to set temperature
   /*
-    Sets the temperature for the next incubation period.
+    Sets the temperature for the next incubation period. Applied as a loop
+	 that reads Up/Down input at the beginning of each run.
 
 	 Returns: none
   */
@@ -216,9 +217,10 @@ void setTemp(int m) { // menu option to set temperature
 
 void setTime(int m) {
   /*
-    Activates the menu option to set the duration of incubation.
-	 Modifies 
+    Activates the menu option to set the duration of incubation. Applied as a loop
+	 that reads Up/Down input at the beginning of each loop. Modifies
 
+    Returns: none
   */
   
   DownState = digitalRead(Down);
@@ -292,10 +294,14 @@ void startUp() {
   startRun();
 }
 
-// Like I've said, I don't think we want to use a duty cycle like this. For real, I think this just turns
-// on the transistor for a percentage of time, but that isn't useful if we start
-// going out of temperature bounds. Right now I can't tell if this is being used, though. -kenton
 void dutyCycle(float period, float onPercentage) {
+  /*
+    Controls the heating pad using a duty cycle. Takes inputs period and onPercentage.
+	 For each period (in seconds), the heating pad will be turned on for the percent
+	 fraction of that period. Note: onPercentage must be between 0 and 1.
+
+	 Returns: none
+  */
   digitalWrite(transistor, HIGH);
   delay(int(period*onPercentage));
   digitalWrite(transistor, LOW);
@@ -307,7 +313,10 @@ void startRun() { // ask user whether to start run (we are not doing this curren
   /*
     Manages the incubation period after the startUp() function heats the 
 	 chamber to the desired temperature. This function continues the heating
-	 of the incubation chamber for the full duration, and
+	 of the incubation chamber for the full duration, and manages transistor control,
+	 the alarm system, and the display of some information.
+
+	 Returns: none
   */
 
   int currentTime = -1;
@@ -315,7 +324,6 @@ void startRun() { // ask user whether to start run (we are not doing this curren
   //for (int t = 0; t < time_setting*60*30*1000; t++) { // run for prescribed amount of time
   uint32_t period = time_setting*60*60000L; // 5 minutes
 
-  // lmao is that a stackexchange link in that next comment :D -kenton
   for (uint32_t tStart = millis();  (millis()-tStart) < period;  ) { //https://arduino.stackexchange.com/questions/22272/how-do-i-run-a-loop-for-a-specific-amount-of-time
 
     // record temperature every hour to serial log
@@ -336,6 +344,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     
     delay(500);
     //resets screen words to black (clears characters)
+	 // FIXME very unclear which print statements are writing and which are "erasing"
     printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
     tft_screen.setCursor(0, 43);
     tft_screen.setTextColor(BLACK);
@@ -382,9 +391,8 @@ void startRun() { // ask user whether to start run (we are not doing this curren
   digitalWrite(transistor, LOW);
 }
 
-// This appears to be a general method that either turns on or off the transistor,
-// depending on where in the duty cycle we are. I would prefer two separate methods,
-// or at least a more descriptive title. I also can't tell what 0.3 and 0.5 mean. -kenton
+// I'd like a more descriptive title. I also can't tell what 0.3 and 0.5 mean. -kenton
+// TODO Figure out if this function or dutyCycle() controls the pads during incubation.
 void transistorControl() {
   /*
     Controls the transistor. When transistor is turned on (HIGH), it allows power flow from
@@ -394,7 +402,7 @@ void transistorControl() {
 	 Returns: none
   */
   if (T > temp_setting-0.3){
-    //turn off transistor, stop power flow from battery to the heating pad
+    // turn off transistor, stop power flow from battery to the heating pad
     digitalWrite(transistor, LOW);
     if (onStatus == 1) {
       tft_screen.fillRect(67, 80, 128, 87, BLACK);
@@ -442,6 +450,8 @@ void tftPrintStartUp() {
 void tftEraseStartUp() {
   /*
     Erases the start-up text by overwriting it with BLACK text.
+	 TODO why does this need to overwrite current text? Why couldn't
+	 they just fillScreen()?
 
 	 Returns: none
   */
@@ -458,6 +468,10 @@ void tftEraseStartUp() {
 }
 
 void tftPrintTest() {
+  /*
+    TODO provide docstring
+  */
+
   // I think I understand why 4 is used, but can we not hard-code numbers into the program? -kenton
   for (int x = 4; x > 0; x--) // max number is number of sec b/t each measurement
   {
