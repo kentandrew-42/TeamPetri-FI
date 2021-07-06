@@ -1,4 +1,4 @@
-//Sara Barker, modified July 5, 2021
+//Sara Barker, modified July 6, 2021
 //Team Petri-FI UI Code
   //This is the very rough and unfinished draft of the UI functionality code. 
 
@@ -10,14 +10,12 @@ int runTime; //the time that is set at the beginning of the run
 int elapsedTime; //the time that the device has been running for
 
 void setup() {
-  // put your setup code here, to run once:
 //will fill this in later once we integrate the UI code into the main code
 }
 
 void loop() {
   /* This code works by checking the electrical state (i.e. time, temperature) and the button state (i.e. the value
    *  (0 or 1) of the three buttons).
-   *  
   */
 
 //********run startup screen first before entering into the switch statement
@@ -39,6 +37,11 @@ void loop() {
           
 
 }
+
+
+/*Each function represents a screen. The switch statement above will read the button and electrical state
+ * and use the switch statement to determine which function to call.
+ */
 
 int startupScreen(startingTemp) {
 /*The first screen - automatically starts up once the battery is connected.
@@ -71,32 +74,73 @@ temp = currentTemp;
  *  temp = temp-1
  *  loop until OK pressed
  */
-Serial.print("Set temp: ")
-Serial.print(temp) //put highlight on the number
-Serial.println("C")
-Serial.println("Set time: 48h")
-Serial.print("Press OK to proceed")
+Serial.print("Set temp: ");
+Serial.print(temp); //put highlight on the number
+Serial.println("C");
+Serial.println("Set time: 48h");
+Serial.print("Press OK to proceed");
 //if OK button pressed, go to setTime(temp)
 }
 
 int setTime(temp){
-  runTime = 48 //default = 48 hours
+  /*Sets time on the same screen as setTemp
+   * Enters with OK, exits with OK
+   * Inputs: temp, outputs: runTime
+   */
+runTime = 48; //default = 48 hours
 
-Serial.print("Set temp: " + String(temp) + "C")
-Serial.print(temp) 
-Serial.println("C")
-Serial.print("Set time: ")
-Serial.print(runTime)//put highlight on the number
-Serial.println("h")
-Serial.print("Press OK to proceed")
+Serial.print("Set temp: " + String(temp) + "C");
+Serial.print("Set time: ");
+Serial.print(runTime);//put highlight on the number
+Serial.println("h");
+Serial.print("Press OK to proceed");
 //return runTime
 }
 
 
-void summary(temp, runTime){
-//Show summary screen with set temp/time, can start run or go back to setting screen
-Serial.println("SUMMARY")
-Serial.println("Temp: " + String(temp) + "C")
-Serial.println("Time: " + String(runTime) + "h")
-Serial.println("
+int summary(temp, runTime){
+/*Show summary screen with set temp/time, can start run or go back to setting screen
+ * Enters with OK from setTime, exits with either OK or down/OK
+ * Inputs: temp, runTime, outputs: temp, runTime (doesn't modify, just passes on)
+ */
+Serial.println("SUMMARY");
+Serial.println("Temp: " + String(temp) + "C");
+Serial.println("Time: " + String(runTime) + "h");
+Serial.println("START");
+Serial.println("Edit incubation settings");
+}
+
+
+void heating(temp){
+/*Screen shows only when heating up to the set temperature; will switch off when the temperature
+ *remains above the set temp for a set amount of time
+ *Enters with OK from summary, exits when temperature has not dropped below temp for a set amount of time
+ *  or with OK
+ *Inputs: temp, outputs: none
+ */
+Serial.println("Current temp: " + String(temp) + "C");
+Serial.println("HEATING...");
+Serial.println("Press OK to stop incubation")
+}
+
+void runningScreen(){
+
+}
+
+void statsScreen(){
+
+}
+
+void warningScreenCurrent(){
+//if temperature is currently below set temp
+
+
+}
+
+void warningScreenPast(){
+//if temperature went below set temp previously but device has not been checked since
+}
+
+void runStopped(){
+
 }
