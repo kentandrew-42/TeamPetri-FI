@@ -255,20 +255,25 @@ void setTime(int m) {
   firstTimeSet = false;
 }
 
-
 float readTemp() {
   /*
-    Performs mathematical operations on the voltage reading from the thermistor pin.
-    Calculates Kelvin temperature, then outputs as a Celsius reading.
-    
-    Returns: T - Celsius temperature reading from temperature sensor
+    Reads temperature value from a thermistor by reading the
+    resistance, then using Adafruit's thermistor resistance
+    lookup table to create a model for temperature values, most
+    accurate between 20 and 45 degrees Celsius.
+
+    Returns: T - floating point number representing temperature (Celsius)
   */
 
-  Vo = analogRead(ThermistorPin); // reads the voltage of ThermistorPin. Resolution of only 4.9 mV (out of 5V)
-  R2 = R1 * (1023.0 / (float)Vo - 1.0);
-  logR2 = log(R2);
-  T = 1.0 / (c1 + (c2 * logR2) + (c3 * pow(logR2, 3)));
-  T = T - 273.15;
+  int R1 = 10000; // resistance of reference resistor
+  
+  // read the input on analog pin 0:
+  // TODO use variable for thermistor pin (don't specify A0)
+  int Vo = analogRead(A0); // reads the voltage of ThermistorPin. Resolution of only 4.9 mV (out of 5V)
+
+  float R2 = R1 / ((1023.0 / (float)Vo) - 1.0); // resistance of thermistor
+  float T = log(((R2/1000) / 28.7)) / (-0.0422); // curve fit equation based on thermistor's lookup table
+
   return T;
 }
 
@@ -369,7 +374,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 
       // trigger alarm by activating the LED and piezo
       digitalWrite(led, HIGH);
-      //tone(piezo_alarm, 1000, 1000);
+      //tone(piezo_alarm, 1000, 1000); // TODO get piezo alarm working
     }
     else {
       tft_screen.setCursor(0, 67);
