@@ -17,28 +17,28 @@
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
 
-// Screen dimensions
+// Screen Dimensions
 #define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 128
 
-// You can use any (4 or) 5 pins
+// Screen Pins (OLED Display)
 #define SCLK_PIN 2
 #define MOSI_PIN 3
 #define DC_PIN   4
 #define CS_PIN   5
 #define RST_PIN  6
 
-// define buttons
+// Defines Button Pins
 #define selectButton 10
 #define Up 11
 #define Down 9
 
-// define transistor/power from battery to heating pad
-#define transistor 12
+// Define Pins for Control Devices
+#define transistor 12 // transistor controls the heating pad (on/off)
 #define led 13
-#define piezo_alarm 15
+#define piezo_alarm 15 // piezo alarm generates a sound
 
-// Color definitions
+// Color Definitions with Hex Codes
 #define BLACK           0x0000
 #define BLUE            0x001F
 #define RED             0xF800
@@ -54,23 +54,22 @@
 #define MIN_TEMP_SET 30 // degrees Celsius; minimum temperature that the user can set during incubation
 #define DEFAULT_TIME 48 // hours
 
-// Defines the parameters associated with the TFT screen.
+// Assigns parameters and pins associated with the Adafruit OLED TFT screen
 Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS_PIN, DC_PIN, MOSI_PIN, SCLK_PIN, RST_PIN);
 
 bool firstTempSet = true;
 bool firstTimeSet = true;
 float p = 3.1415927;
-int timenow = 0;
 int ThermistorPin = 0;
 int Vo;
-float R1 = 10000;
+float R1 = 10000; // FIXME this is also defined within the readTemp function. Remove one of the others
 float logR2, R2, T;
-float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07; // What are these?
-int finaltest = 0;
+float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07; // What are these? TODO we may want to remove these with the new thermistor.
+int finaltest = 0; // TODO this is associated with the alarm system. We may want to rename this.
 int menuButtonPreviousState = LOW;
 int tempUpPreviousState = LOW;
 int tempDownPreviousState = LOW;
-int out_range_counter = 0;
+int out_range_counter = 0; // counts minutes that the temperature is out of range.
 int menuOpt = 0;
 float runningAvg[] = {0, 0, 0, 0, 0};
 float T_average;
@@ -269,7 +268,7 @@ float readTemp() {
   
   // read the input on analog pin 0:
   // TODO use variable for thermistor pin (don't specify A0)
-  int Vo = analogRead(A0); // reads the voltage of ThermistorPin. Resolution of only 4.9 mV (out of 5V)
+  int Vo = analogRead(A0); // reads the voltage of ThermistorPin. Resolution of only 4.9 mV (out of 5V) // FIXME do i need to re-define int here?
 
   float R2 = R1 / ((1023.0 / (float)Vo) - 1.0); // resistance of thermistor
   float T = log(((R2/1000) / 28.7)) / (-0.0422); // curve fit equation based on thermistor's lookup table
