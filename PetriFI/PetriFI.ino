@@ -1,12 +1,12 @@
 /*
   Team Petri-FI | SEED Internship & Rice360 Institute
-  
+
   Contributors:
   Kenton Roberts
   Nancy Lindsey
   Teja Paturu
   Sara Barker
-  
+
   Code Adapted From Previous Student Teams:
   Moonrat
   Minicubator
@@ -94,7 +94,7 @@ void setup(void) {
   pinMode(Up, INPUT);
   pinMode(Down, INPUT);
   digitalWrite(transistor, LOW);
-  
+
   Serial.begin(9600);
   Serial.println("Starting Up...");
   tft_screen.begin();
@@ -111,16 +111,16 @@ void loop() {
   /*
     Main loop function of the Arduino.
 
-	 Each loop, this functions reads if the select button has been pressed.
-	 If not, it continues to look for Up/Down input for setTemp or setTime,
-	 until the temperature and time have been selected.
+    Each loop, this functions reads if the select button has been pressed.
+    If not, it continues to look for Up/Down input for setTemp or setTime,
+    until the temperature and time have been selected.
 
-	 When the select button is pressed, we increment menuOpt to specify the
-	 next menu option (temp, time, and so on).
-	 Finally, when all menu options have been selected, startUp() is called,
-	 starting the incubation and heating the chamber.
+    When the select button is pressed, we increment menuOpt to specify the
+    next menu option (temp, time, and so on).
+    Finally, when all menu options have been selected, startUp() is called,
+    starting the incubation and heating the chamber.
 
-	 Returns: none
+    Returns: none
   */
 
   // Reads if the select button has been pressed.
@@ -128,8 +128,8 @@ void loop() {
 
   // Prints banner info about the current temperature and time settings.
   printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
-  
-  if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1 
+
+  if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1
     menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
     //tft_screen.fillScreen(BLACK);
     tft_screen.fillRect(0, 40, SCREEN_WIDTH, 60, BLACK);
@@ -137,7 +137,7 @@ void loop() {
   if (menuOpt == 0) {
     setTemp(menuOpt);
   }
-  else if(menuOpt == 1) {
+  else if (menuOpt == 1) {
     setTime(menuOpt);
   }
   else { // only entered if menuOpt is 2
@@ -154,28 +154,28 @@ void loop() {
 void printBanner(int temp_setting, int temp_setting_prev, int time_setting, int time_setting_prev) {
   /*
     Prints the yellow text at the top of the screen. Shows the selected setting while powered on.
-	 Includes the temperature and duration settings for the incubation period.
+    Includes the temperature and duration settings for the incubation period.
 
-	 Returns: none
+    Returns: none
   */
-  tft_screen.setCursor(0,10);
+  tft_screen.setCursor(0, 10);
   tft_screen.setTextColor(YELLOW);
   tft_screen.print("Curr Temp Set (C): "); // Temperature set prompt
   tft_screen.print(temp_setting);
-  
-  tft_screen.setCursor(0,20);
+
+  tft_screen.setCursor(0, 20);
   tft_screen.setTextColor(YELLOW);
   tft_screen.print("Curr Time Set (h): "); // Time set prompt
   tft_screen.print(time_setting);
-  
+
 }
 
 void setTemp(int m) { // menu option to set temperature
   /*
     Sets the temperature for the next incubation period. Applied as a loop
-	 that reads Up/Down input at the beginning of each run.
+    that reads Up/Down input at the beginning of each run.
 
-	 Returns: none
+    Returns: none
   */
 
   // where the heck is "int m" used in this method? -kenton
@@ -183,29 +183,29 @@ void setTemp(int m) { // menu option to set temperature
   UpState = digitalRead(Up);
 
   int temp_setting_prev = temp_setting;
-  
-  if ((DownState == HIGH) && (temp_setting <= MAX_TEMP_SET) && (temp_setting > MIN_TEMP_SET)) { 
+
+  if ((DownState == HIGH) && (temp_setting <= MAX_TEMP_SET) && (temp_setting > MIN_TEMP_SET)) {
     temp_setting--; // decrement the temperature setting by 1, given within the acceptable range
 
   }
   if ((UpState == HIGH) && (temp_setting < MAX_TEMP_SET) && (temp_setting >= MIN_TEMP_SET)) {
     temp_setting++; // increment the temperature setting by 1, given within the acceptable range
-    
-  }  
+
+  }
 
   if ((temp_setting != temp_setting_prev) || (firstTempSet == true)) {
-    tft_screen.setCursor(0,10); // this code blots out the yellow print at the top while the temperature selection is occurring
+    tft_screen.setCursor(0, 10); // this code blots out the yellow print at the top while the temperature selection is occurring
     tft_screen.setTextColor(YELLOW);
     tft_screen.print("Curr Temp Set (C): ");
     tft_screen.setTextColor(BLACK);
     tft_screen.print(temp_setting_prev);
-    tft_screen.setCursor(0,50); // display the selection in progress to the user.
+    tft_screen.setCursor(0, 50); // display the selection in progress to the user.
     tft_screen.setTextColor(WHITE);
     tft_screen.println("Set temperature (C): ");
-    tft_screen.setCursor(0,60);
+    tft_screen.setCursor(0, 60);
     tft_screen.setTextColor(BLACK);
     tft_screen.print(temp_setting_prev);
-    tft_screen.setCursor(0,60);
+    tft_screen.setCursor(0, 60);
     tft_screen.setTextColor(MAGENTA);
     tft_screen.print(temp_setting);
   }
@@ -217,36 +217,36 @@ void setTemp(int m) { // menu option to set temperature
 void setTime(int m) {
   /*
     Activates the menu option to set the duration of incubation. Applied as a loop
-	 that reads Up/Down input at the beginning of each loop. Modifies
+    that reads Up/Down input at the beginning of each loop. Modifies
 
     Returns: none
   */
-  
+
   DownState = digitalRead(Down);
   UpState = digitalRead(Up);
 
   int time_setting_prev = time_setting;
-  
-  if (DownState == HIGH) { 
+
+  if (DownState == HIGH) {
     time_setting--; // decrement the time setting by 1 hour
   }
   if (UpState == HIGH) {
     time_setting++; // increment the time setting by 1 hour
-  }  
+  }
 
   if ((time_setting != time_setting_prev) || (firstTimeSet == true)) {
-    tft_screen.setCursor(0,20); // this code blots out the yellow print at the top while the time selection is occurring
+    tft_screen.setCursor(0, 20); // this code blots out the yellow print at the top while the time selection is occurring
     tft_screen.setTextColor(YELLOW);
     tft_screen.print("Curr Time Set (h): ");
     tft_screen.setTextColor(BLACK);
     tft_screen.print(time_setting_prev);
-    tft_screen.setCursor(0,50); // display the selection in progress to the user.
+    tft_screen.setCursor(0, 50); // display the selection in progress to the user.
     tft_screen.setTextColor(WHITE);
     tft_screen.println("Set time (hrs): ");
-    tft_screen.setCursor(0,60);
+    tft_screen.setCursor(0, 60);
     tft_screen.setTextColor(BLACK);
     tft_screen.print(time_setting_prev);
-    tft_screen.setCursor(0,60);
+    tft_screen.setCursor(0, 60);
     tft_screen.setTextColor(MAGENTA);
     tft_screen.print(time_setting);
   }
@@ -265,13 +265,13 @@ float readTemp() {
   */
 
   int R1 = 10000; // resistance of reference resistor
-  
+
   // read the input on analog pin 0:
   // TODO use variable for thermistor pin (don't specify A0)
   int Vo = analogRead(A0); // reads the voltage of ThermistorPin. Resolution of only 4.9 mV (out of 5V) // FIXME do i need to re-define int here?
 
   float R2 = R1 / ((1023.0 / (float)Vo) - 1.0); // resistance of thermistor
-  float T = log(((R2/1000) / 28.7)) / (-0.0422); // curve fit equation based on thermistor's lookup table
+  float T = log(((R2 / 1000) / 28.7)) / (-0.0422); // curve fit equation based on thermistor's lookup table
 
   return T;
 }
@@ -279,17 +279,17 @@ float readTemp() {
 void startUp() {
   /*
     This is the function that is called immediately after all incubation settings
-	 have been selected. This function manages the initial heating of the chamber
-	 to the desired temperature, at which point startRun() is called.
+    have been selected. This function manages the initial heating of the chamber
+    to the desired temperature, at which point startRun() is called.
 
-	 Returns: none
+    Returns: none
   */
   T = readTemp();
-  // while loop exits when temp gets up to adequate temperature, it appears -kenton
-  while (T < temp_setting-0.5) {
+  // while loop exits when temp gets up to "adequate" temperature, it appears -kenton
+  while (T < temp_setting - 0.5) {
     tftPrintStartUp();
-	 // TODO I don't think we want to hard-code the duty cycle, we instead want a response algorithm -kenton
-	 // Oh, maybe this is JUST for getting the temperature up to the desired temp -kenton
+    // TODO I don't think we want to hard-code the duty cycle, we instead want a response algorithm -kenton
+    // Oh, maybe this is JUST for getting the temperature up to the desired temp -kenton
     dutyCycle(20000, 0.3); //30% duty cycle found not to exceed 65oC surrounded by air at room temp, 20% duty cycle does not exceed 53oC
     tftEraseStartUp();
     T = readTemp();
@@ -301,39 +301,39 @@ void startUp() {
 void dutyCycle(float period, float onPercentage) {
   /*
     Controls the heating pad using a duty cycle. Takes inputs period and onPercentage.
-	 For each period (in seconds), the heating pad will be turned on for the percent
-	 fraction of that period. Note: onPercentage must be between 0 and 1.
+    For each period (in seconds), the heating pad will be turned on for the percent
+    fraction of that period. Note: onPercentage must be between 0 and 1.
 
-	 Returns: none
+    Returns: none
   */
   digitalWrite(transistor, HIGH);
-  delay(int(period*onPercentage));
+  delay(int(period * onPercentage));
   digitalWrite(transistor, LOW);
-  delay(int(period*(1-onPercentage)));
+  delay(int(period * (1 - onPercentage)));
 }
 
 // ambiguous title: how is it different from startUp? -kenton
 void startRun() { // ask user whether to start run (we are not doing this currently)
   /*
-    Manages the incubation period after the startUp() function heats the 
-	 chamber to the desired temperature. This function continues the heating
-	 of the incubation chamber for the full duration, and manages transistor control,
-	 the alarm system, and the display of some information.
+    Manages the incubation period after the startUp() function heats the
+    chamber to the desired temperature. This function continues the heating
+    of the incubation chamber for the full duration, and manages transistor control,
+    the alarm system, and the display of some information.
 
-	 Returns: none
+    Returns: none
   */
 
   int currentTime = -1;
   int previousTime;
   //for (int t = 0; t < time_setting*60*30*1000; t++) { // run for prescribed amount of time
-  uint32_t period = time_setting*60*60000L; // 5 minutes
+  uint32_t period = time_setting * 60 * 60000L; // 5 minutes
 
-  for (uint32_t tStart = millis();  (millis()-tStart) < period;  ) { //https://arduino.stackexchange.com/questions/22272/how-do-i-run-a-loop-for-a-specific-amount-of-time
+  for (uint32_t tStart = millis();  (millis() - tStart) < period;  ) { //https://arduino.stackexchange.com/questions/22272/how-do-i-run-a-loop-for-a-specific-amount-of-time
 
     // record temperature every hour to serial log
-	 // FIXME every hour is not enough to record. We want greater resolution.
+    // FIXME every hour is not enough to record. We want greater resolution.
     previousTime = currentTime;
-    currentTime = (millis()-tStart)/3600000; //get current full hours elapsed
+    currentTime = (millis() - tStart) / 3600000; //get current full hours elapsed
     if (currentTime != previousTime) {
       //Serial.print("Time (hours): ");
       Serial.print("Time (hours): ");
@@ -345,10 +345,10 @@ void startRun() { // ask user whether to start run (we are not doing this curren
       Serial.print("");
       Serial.println("˚C");
     }
-    
+
     delay(500);
     //resets screen words to black (clears characters)
-	 // FIXME very unclear which print statements are writing and which are "erasing"
+    // FIXME very unclear which print statements are writing and which are "erasing"
     printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
     tft_screen.setCursor(0, 43);
     tft_screen.setTextColor(BLACK);
@@ -364,7 +364,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     tft_screen.println("Finished Test was:"); // information on whether the internal temperature is at the correct temp over a trend of time
 
     if (finaltest == 1) { // build in the audio and visual alarms data here
-      tft_screen.setCursor(0, 67); 
+      tft_screen.setCursor(0, 67);
       tft_screen.setTextColor(BLACK);
       tft_screen.print("SUCCESSFUL");
       tft_screen.setCursor(0, 67);
@@ -400,29 +400,29 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 void transistorControl() {
   /*
     Controls the transistor. When transistor is turned on (HIGH), it allows power flow from
-	 the battery to the heaing pad. When the transistor is turned off (LOW), it stops this
-	 flow and turns off the heating pad.
+    the battery to the heaing pad. When the transistor is turned off (LOW), it stops this
+    flow and turns off the heating pad.
 
-	 Returns: none
+    Returns: none
   */
-  if (T > temp_setting-0.3){
+  if (T > temp_setting - 0.3) {
     // turn off transistor, stop power flow from battery to the heating pad
     digitalWrite(transistor, LOW);
     if (onStatus == 1) {
       tft_screen.fillRect(67, 80, 128, 87, BLACK);
     }
-    tft_screen.setCursor(0,80);
+    tft_screen.setCursor(0, 80);
     tft_screen.setTextColor(WHITE);
     tft_screen.setTextSize(0);
     tft_screen.println("HEATING PAD OFF");
     onStatus = 0;
-  } else if (T < temp_setting-0.5) {
+  } else if (T < temp_setting - 0.5) {
     //turn on transistor, start power flow from battery to the heating pad if in range or below range
     digitalWrite(transistor, HIGH); // Cory's note: switched from high to low here
     if (onStatus == 0) {
       tft_screen.fillRect(67, 80, 128, 87, BLACK);
     }
-    tft_screen.setCursor(0,80);
+    tft_screen.setCursor(0, 80);
     tft_screen.setTextColor(WHITE);
     tft_screen.setTextSize(0);
     tft_screen.println("HEATING PAD ON");
@@ -434,7 +434,7 @@ void tftPrintStartUp() {
   /*
     This method starts the tft_screen and prints the startup text.
 
-	 Returns: none
+    Returns: none
   */
 
   tft_screen.setCursor(0, 35);
@@ -454,10 +454,10 @@ void tftPrintStartUp() {
 void tftEraseStartUp() {
   /*
     Erases the start-up text by overwriting it with BLACK text.
-	 TODO why does this need to overwrite current text? Why couldn't
-	 they just fillScreen()?
+    TODO why does this need to overwrite current text? Why couldn't
+    they just fillScreen()?
 
-	 Returns: none
+    Returns: none
   */
   tft_screen.setCursor(0, 35);
   tft_screen.setTextColor(BLACK);
@@ -479,7 +479,7 @@ void tftPrintTest() {
   // I think I understand why 4 is used, but can we not hard-code numbers into the program? -kenton
   for (int x = 4; x > 0; x--) // max number is number of sec b/t each measurement
   {
-    runningAvg[x] = runningAvg[x-1];
+    runningAvg[x] = runningAvg[x - 1];
   }
   runningAvg[0] = T;
 
@@ -489,7 +489,7 @@ void tftPrintTest() {
     sum = sum + runningAvg[i];
   }
   T_average = sum / 5;
-  
+
   tft_screen.setCursor(0, 35);
   tft_screen.setTextColor(WHITE);
   tft_screen.setTextSize(0);
@@ -500,7 +500,7 @@ void tftPrintTest() {
   //reads stored temperature and determines if the temperature falls within range
   tft_screen.setTextColor(WHITE);
   tft_screen.print("Test:");
-  if (T_average > temp_setting-2 && T_average < temp_setting+2) { // this is if the temperature is in range
+  if (T_average > temp_setting - 2 && T_average < temp_setting + 2) { // this is if the temperature is in range
     out_range_counter = 0;
     tft_screen.setCursor(30, 51);
     tft_screen.print("IN RANGE");
@@ -512,7 +512,7 @@ void tftPrintTest() {
     tft_screen.print("OUT OF RANGE");
     if (out_range_counter >= 5) { // within 5 minutes, with a 15-second interval between measurements
       finaltest = 1; // in startRun(), this is meant to trigger the alarm/notification system -kenton
-		// TODO rename finaltest to something more descriptive.
+      // TODO rename finaltest to something more descriptive.
     }
   }
 }
