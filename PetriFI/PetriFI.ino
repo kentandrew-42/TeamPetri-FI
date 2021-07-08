@@ -16,27 +16,35 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
+#include <SD.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+// #include <PID.h>
 
 // Screen Dimensions
 #define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 128
 
 // Screen Pins (OLED Display)
-#define SCLK_PIN 2
-#define MOSI_PIN 3
-#define DC_PIN   4
-#define CS_PIN   5
-#define RST_PIN  6
+// SCLK, MOSI, and MISO are SPI pins (11-13) with CS being pin 10 (hardware SS pin)
+#define SCLK_PIN          13
+#define MOSI_PIN          11
+#define MISO_PIN          12
+#define DC_PIN            4
+#define SD_CHIP_SELECT    10 // must be pin 10 (hardware SS pin on Uno)
+#define OLED_CHIP_SELECT  5
+#define RST_PIN           6
 
 // Defines Button Pins
-#define selectButton 10
-#define Up 11
-#define Down 9
+#define selectButton  8 // 10 originally
+#define Up            3 // 11 originally
+#define Down          9
 
 // Define Pins for Control Devices
-#define transistor 12 // transistor controls the heating pad (on/off)
-#define led 13
-#define piezo_alarm 15 // piezo alarm generates a sound
+#define transistor    2 // transistor controls the heating pad (on/off)
+#define led           0
+#define piezo_alarm   1 // piezo alarm generates a sound, analog pin A1
+#define one_wire_bus  7 // one-wire bus for digital thermometer
 
 // Color Definitions with Hex Codes
 #define BLACK           0x0000
@@ -51,16 +59,17 @@
 // Incubation Defaults
 #define DEFAULT_TEMP 30 // degrees Celsius
 #define MAX_TEMP_SET 42 // degrees Celsius; max temperature that the user can set during incubation
-#define MIN_TEMP_SET 30 // degrees Celsius; minimum temperature that the user can set during incubation
+#define MIN_TEMP_SET 20 // degrees Celsius; minimum temperature that the user can set during incubation
 #define DEFAULT_TIME 48 // hours
 
 // Assigns parameters and pins associated with the Adafruit OLED TFT screen
-Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS_PIN, DC_PIN, MOSI_PIN, SCLK_PIN, RST_PIN);
+// Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_CHIP_SELECT, DC_PIN, MOSI_PIN, SCLK_PIN, RST_PIN);
+Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_CHIP_SELECT, DC_PIN, RST_PIN);
 
 bool firstTempSet = true;
 bool firstTimeSet = true;
 float p = 3.1415927;
-int ThermistorPin = 0;
+// int ThermistorPin = 0; // TODO remove thermistor code
 int Vo;
 float R1 = 10000; // FIXME this is also defined within the readTemp function. Remove one of the others
 float logR2, R2, T;
@@ -86,6 +95,12 @@ int selectButtonState = 0;
 
 int onStatus = 0; // this is a placeholder for the transistor testing
 
+OneWire oneWire(one_wire_bus); // sets up one-wire bus for digital thermometer
+DallasTemperature sensors(&oneWire); // passes oneWire reference to Dallas Temperature
+
+File temperatureLog; // SD card file
+
+
 void setup(void) {
 
   //battery
@@ -105,6 +120,22 @@ void setup(void) {
   uint16_t time = millis();
   tft_screen.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
   time = millis() - time;
+
+  sensors.begin(); // starts up the library (for reading digital thermometer)
+
+  pinMode(SD_CHIP_SELECT, OUTPUT);
+  digitalWrite(SD_CHIP_SELECT, HIGH);
+
+  SPI.begin();
+
+  // Attempts to initialize the SD card.
+  // Make sure that the file is already created
+  // in the main directory of the SD card.
+  if (!SD.begin(SD_CHIP_SELECT)) {
+    Serial.println("Initialization of SD card failed...");
+    while (true);
+  }
+  Serial.println("SD card initialized.");
 }
 
 void loop() {
@@ -124,13 +155,14 @@ void loop() {
   */
 
   // Reads if the select button has been pressed.
+  // FIXME buttons are reading too quickly when buttons are held down.
   selectButtonState = digitalRead(selectButton);
 
   // Prints banner info about the current temperature and time settings.
   printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
 
   if (selectButtonState == HIGH) { // pressing Down will increment menuopt by 1
-    menuOpt = (menuOpt + 1) % 3; // increment the menu setting by 1
+    menuOpt = (menuOpt + 1) % 3; // incrsement the menu setting by 1
     //tft_screen.fillScreen(BLACK);
     tft_screen.fillRect(0, 40, SCREEN_WIDTH, 60, BLACK);
   }
@@ -254,7 +286,7 @@ void setTime(int m) {
   firstTimeSet = false;
 }
 
-float readTemp() {
+float readTempThermistor() { // FIXME remove old thermistor code.
   /*
     Reads temperature value from a thermistor by reading the
     resistance, then using Adafruit's thermistor resistance
@@ -276,6 +308,74 @@ float readTemp() {
   return T;
 }
 
+float readTemp() {
+  /*
+    Reads temperature value from a digital thermometer
+    using a one-wire bus, and the DallasTemperature
+    sensors library.
+
+    Example Usage: https://github.com/milesburton/Arduino-Temperature-Control-Library/blob/master/examples/Simple/Simple.ino
+
+    Returns: temp - floating point number representing temperature (Celsius)
+  */
+
+  Serial.println("Reading digital thermometer...");
+  sensors.requestTemperatures();
+  Serial.println("Got temperature(s)");
+  float temp = sensors.getTempCByIndex(0);
+  Serial.print("Temp: ");
+  Serial.println(temp);
+  return temp;
+}
+
+void writeTempToSD(int seconds, float temperature) {
+  /*
+    Writes a temperature to the SD card. Used
+    to store many time and temperature values.
+    Written to CSV in the format "seconds,temperature",
+    where "seconds" is an integer and "temperature" is
+    a float.
+
+    Returns: none
+  */
+
+  temperatureLog = SD.open("temp_log.csv", FILE_WRITE);
+
+  // if the temperatureLog file is available, write to it.
+  if (temperatureLog) {
+    temperatureLog.print(seconds);
+    temperatureLog.print(",");
+    temperatureLog.println(temperature);
+    Serial.print("Value successfully written to SD card: ");
+    Serial.print(seconds);
+    Serial.print(", ");
+    Serial.println(temperature);
+  }
+  else {
+    Serial.println("Error opening temp_log.csv (SD card file)");
+  }
+
+  temperatureLog.close();
+
+}
+
+float readTempFromSD(int seconds) {
+  /*
+    Reads a temperature from termperature_log.csv, the SD
+    card temperature log for incubation. Takes a parameter
+    "seconds" that represents the time in seconds from the
+    start of the incubation period (after pre-heating).
+
+    Returns: T - temperature (in Celsius) of chamber at time "seconds"
+  */
+
+  temperatureLog = SD.open("temperature_log.csv", FILE_READ);
+
+  if (temperatureLog) {
+    // TODO find desired seconds value, then output temperature at that time.
+  }
+}
+
 void startUp() {
   /*
     This is the function that is called immediately after all incubation settings
@@ -290,9 +390,12 @@ void startUp() {
     tftPrintStartUp();
     // TODO I don't think we want to hard-code the duty cycle, we instead want a response algorithm -kenton
     // Oh, maybe this is JUST for getting the temperature up to the desired temp -kenton
-    dutyCycle(20000, 0.3); //30% duty cycle found not to exceed 65oC surrounded by air at room temp, 20% duty cycle does not exceed 53oC
+    // Yes, but we could still make this better by using the PID controller for the whole time.
+    dutyCycle(20000, 0.7); //30% duty cycle found not to exceed 65oC surrounded by air at room temp, 20% duty cycle does not exceed 53oC
     tftEraseStartUp();
     T = readTemp();
+    // FIXME this is a test SD card write statement
+    writeTempToSD(-1, T); // writes temperature readings to SD card. FIXME provide don't record pre-heat values in final product
   }
   tftEraseStartUp();
   startRun();
@@ -324,6 +427,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
   */
 
   int currentTime = -1;
+  int currentSeconds;
   int previousTime;
   //for (int t = 0; t < time_setting*60*30*1000; t++) { // run for prescribed amount of time
   uint32_t period = time_setting * 60 * 60000L; // 5 minutes
@@ -333,7 +437,9 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     // record temperature every hour to serial log
     // FIXME every hour is not enough to record. We want greater resolution.
     previousTime = currentTime;
-    currentTime = (millis() - tStart) / 3600000; //get current full hours elapsed
+    currentTime = (millis() - tStart) / 3600000; // get current full hours elapsed
+    currentSeconds = (millis() - tStart) / 1000; // get current time in seconds
+
     if (currentTime != previousTime) {
       //Serial.print("Time (hours): ");
       Serial.print("Time (hours): ");
@@ -383,6 +489,11 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 
     //reads current temperature
     T = readTemp();
+    // Serial.print("Current Seconds of Incubation: ");
+    // Serial.println(currentSeconds); // current seconds jump about 2 seconds each loop
+    if (currentSeconds % 30 == 0) {
+      writeTempToSD(currentSeconds, T); // it will NOT write every 30 seconds, because the loop doesn't complete every second.
+    }
 
     // tft_screen print function
     tftPrintTest();
