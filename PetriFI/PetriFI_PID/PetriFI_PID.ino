@@ -62,8 +62,7 @@
 #define MIN_TEMP_SET 20 // degrees Celsius; minimum temperature that the user can set during incubation
 #define DEFAULT_TIME 48 // hours
 
-// Assigns parameters and pins associated with the Adafruit OLED TFT screen
-// Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_CHIP_SELECT, DC_PIN, MOSI_PIN, SCLK_PIN, RST_PIN);
+// Assigns parameters and pins associated with the Adafruit OLED TFT screen with SD card
 Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_CHIP_SELECT, DC_PIN, RST_PIN);
 
 bool firstTempSet = true;
@@ -104,7 +103,7 @@ File temperatureLog; // SD card file
 
 
 // PID Controller Parameters
-double Kp = 0.05, Ki = 0.02, Kd = 0.01; // tune these parameters for optimal temperature control.
+double Kp = 4, Ki = 1, Kd = 1; // tune these parameters for optimal temperature control.
 double* PID_input = (double*)&T; // temperature is input // FIXME is this the right syntax?
 double* PID_output; // must also be double*
 double* PID_setpoint = (double*)&temp_setting; // setpoint is given by the desired temperature
@@ -156,6 +155,9 @@ void setup(void) {
     while (true);
   }
   Serial.println("SD card initialized.");
+
+  // Sets the mode of the PID controller
+  therm_PID.SetMode(AUTOMATIC);
 }
 
 void loop() {
@@ -185,6 +187,7 @@ void loop() {
     menuOpt = (menuOpt + 1) % 3; // incrsement the menu setting by 1
     //tft_screen.fillScreen(BLACK);
     tft_screen.fillRect(0, 40, SCREEN_WIDTH, 60, BLACK);
+    delay(100); // delays so that select button won't register keypresses so quickly
   }
   if (menuOpt == 0) {
     setTemp(menuOpt);
