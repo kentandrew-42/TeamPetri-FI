@@ -8,9 +8,16 @@
   Sara Barker
 
   Code Adapted From Previous Student Teams:
-  Moonrat
+  Moonrats
   Minicubator
   and Contributions from the Public Invention Moonrat Team.
+
+  This sketch allows the running of an incubation, with options
+  to adjust the duration and temperature of the incubator. This
+  is accomplished by using a digital thermometer and a heating pad.
+  This PID version attempts to implement a PID controller instead
+  of temperature thresholds for controlling the heating pad, for
+  more consistent temperature control.
 */
 
 #include <Adafruit_GFX.h>
@@ -68,12 +75,8 @@ Adafruit_SSD1351 tft_screen = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI
 bool firstTempSet = true;
 bool firstTimeSet = true;
 float p = 3.1415927;
-// int ThermistorPin = 0; // TODO remove thermistor code
-int Vo;
-float R1 = 10000; // FIXME this is also defined within the readTemp function. Remove one of the others
-float logR2, R2, T; // FIXME some of these might be old variables (not T though)
-float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07; // What are these? TODO we may want to remove these with the new thermistor.
-int finaltest = 0; // TODO this is associated with the alarm system. We may want to rename this.
+float T;
+int finalStatus = 0;
 int menuButtonPreviousState = LOW;
 int tempUpPreviousState = LOW;
 int tempDownPreviousState = LOW;
@@ -81,9 +84,8 @@ int out_range_counter = 0; // counts minutes that the temperature is out of rang
 int menuOpt = 0;
 float runningAvg[] = {0, 0, 0, 0, 0};
 float T_average;
-//int range = map(T, tempMin, tempMax, 0, 3);
 
-// FIXME these were originally all integers, not floats
+// FIXME these were originally all integers, not doubles
 // floats used for better compatibility with the PID controller
 double temp_setting = DEFAULT_TEMP; // use button to increment or decrement as necessary
 double temp_setting_prev = DEFAULT_TEMP;
@@ -94,7 +96,7 @@ int DownState = 0;
 int UpState = 0;
 int selectButtonState = 0;
 
-int onStatus = 0; // this is a placeholder for the transistor testing
+int onStatus = 0; // keeps track of heating pad status
 
 OneWire oneWire(one_wire_bus); // sets up one-wire bus for digital thermometer
 DallasTemperature sensors(&oneWire); // passes oneWire reference to Dallas Temperature
@@ -116,8 +118,6 @@ PID therm_PID(PID_input, PID_output, PID_setpoint, Kp, Ki, Kd, DIRECT);
 // Duty Cycle Recording (for main incubation duration)
 long elapsedMillisHeating = 0L;
 float overallDutyCycle = 0.0;
-
-
 
 
 void setup(void) {
@@ -177,7 +177,6 @@ void loop() {
   */
 
   // Reads if the select button has been pressed.
-  // FIXME buttons are reading too quickly when buttons are held down.
   selectButtonState = digitalRead(selectButton);
 
   // Prints banner info about the current temperature and time settings.
@@ -187,7 +186,7 @@ void loop() {
     menuOpt = (menuOpt + 1) % 3; // incrsement the menu setting by 1
     //tft_screen.fillScreen(BLACK);
     tft_screen.fillRect(0, 40, SCREEN_WIDTH, 60, BLACK);
-    delay(100); // delays so that select button won't register keypresses so quickly
+    delay(200); // delays so that select button won't register keypresses so quickly
   }
   if (menuOpt == 0) {
     setTemp(menuOpt);
@@ -233,7 +232,6 @@ void setTemp(int m) { // menu option to set temperature
     Returns: none
   */
 
-  // where the heck is "int m" used in this method? -kenton
   DownState = digitalRead(Down);
   UpState = digitalRead(Up);
 
@@ -385,18 +383,17 @@ void startUp() {
 
     Returns: none
   */
+  
   T = readTemp();
-  // while loop exits when temp gets up to "adequate" temperature, it appears -kenton
+
   while (T < temp_setting - 0.5) {
     tftPrintStartUp();
-    // TODO I don't think we want to hard-code the duty cycle, we instead want a response algorithm -kenton
-    // Oh, maybe this is JUST for getting the temperature up to the desired temp -kenton
-    // Yes, but we could still make this better by using the PID controller for the whole time.
-    dutyCycle(20000, 0.7); //30% duty cycle found not to exceed 65oC surrounded by air at room temp, 20% duty cycle does not exceed 53oC
+    dutyCycle(20000, 0.7); // sets duty cycle just for pre-heating phase. 
     tftEraseStartUp();
     T = readTemp();
-    // FIXME this is a test SD card write statement
-    writeTempToSD(-1, T); // writes temperature readings to SD card. FIXME provide don't record pre-heat values in final product
+
+    // Test Write to SD card for pre-heating phase
+    writeTempToSD(-1, T); // writes temperature readings to SD card.
   }
   tftEraseStartUp();
   startRun();
@@ -416,8 +413,7 @@ void dutyCycle(float period, float onPercentage) {
   delay(int(period * (1 - onPercentage)));
 }
 
-// ambiguous title: how is it different from startUp? -kenton
-void startRun() { // ask user whether to start run (we are not doing this currently)
+void startRun() {
   /*
     Manages the incubation period after the startUp() function heats the
     chamber to the desired temperature. This function continues the heating
@@ -443,8 +439,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     currentHours = currentMillis / 3600000; // get current full hours elapsed
 
 
-    // if the hour increases, reports information to the serial port
-    // used for testing
+    // record temperature every hour to serial log for testing summary (if computer is connected during incubation)
     if (currentHours != previousHours) {
       //Serial.print("Time (hours): ");
       Serial.print("Time (hours): ");
@@ -458,7 +453,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     }
 
     delay(500);
-    //resets screen words to black (clears characters)
+    // resets screen words to black (clears characters)
     // FIXME very unclear which print statements are writing and which are "erasing"
     printBanner(temp_setting, temp_setting_prev, time_setting, time_setting_prev);
     tft_screen.setCursor(0, 43);
@@ -472,9 +467,9 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     tft_screen.print("OUT OF RANGE");
     tft_screen.setCursor(0, 59);
     tft_screen.setTextColor(WHITE);
-    tft_screen.println("Current Test Status:"); // FIXME this is misleading // information on whether the internal temperature is at the correct temp over a trend of time
+    tft_screen.println("Current Test Status:"); // information on whether the internal temperature is at the correct temp over a trend of time
 
-    if (finaltest == 1) { // build in the audio and visual alarms data here
+    if (finalStatus == 1) { // build in the audio and visual alarms data here
       tft_screen.setCursor(0, 67);
       tft_screen.setTextColor(BLACK);
       tft_screen.print("Good");
@@ -484,7 +479,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 
       // trigger alarm by activating the LED and piezo
       digitalWrite(led, HIGH);
-      //tone(piezo_alarm, 1000, 1000); // TODO get piezo alarm working
+      //tone(piezo_alarm, 1000, 1000);
     }
     else {
       tft_screen.setCursor(0, 67);
@@ -505,7 +500,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
 
     currentLoopHeating = onStatus; // recorded to calculate duty cycle (to add elapsed time of heating)
 
-    //PID Control of Heating Pad
+    // PID Control of Heating Pad
     therm_PID.Compute();
     Serial.print("PID Input (Temp):   ");
     Serial.println(*PID_input);
@@ -518,7 +513,7 @@ void startRun() { // ask user whether to start run (we are not doing this curren
     // such as the screen turning off or Serial information being incomplete. Likely using
     // too much storage space and/or dynamic memory of the Arduino.
 
-    delay(1000); // FIXME originally only 500
+    delay(1000); // originally 500
 
     loopDuration = (millis() - tStart) - currentMillis; // actual current time minus time at the start of loop.
     
@@ -599,9 +594,7 @@ void tftPrintStartUp() {
 void tftEraseStartUp() {
   /*
     Erases the start-up text by overwriting it with BLACK text.
-    TODO why does this need to overwrite current text? Why couldn't
-    they just fillScreen()?
-
+    
     Returns: none
   */
   tft_screen.setCursor(0, 35);
@@ -618,11 +611,15 @@ void tftEraseStartUp() {
 
 void tftPrintTest() {
   /*
-    TODO provide docstring
+    Prints the test at the end of each startRun() loop. Describes the
+    current status of temperatures of the incubator, and can also
+    trigger the alarm system if the system has been out of range
+    for too long.
+
+    Returns: none
   */
 
-  // I think I understand why 4 is used, but can we not hard-code numbers into the program? -kenton
-  for (int x = 4; x > 0; x--) // max number is number of sec b/t each measurement
+  for (int x = 4; x > 0; x--) // max number is number of secs between each measurement
   {
     runningAvg[x] = runningAvg[x - 1];
   }
@@ -649,15 +646,14 @@ void tftPrintTest() {
     out_range_counter = 0;
     tft_screen.setCursor(30, 51);
     tft_screen.print("IN RANGE");
-    // finaltest = 0;
+    // finalStatus = 0;
   }
   else { // this is if the temperature is out of range
     out_range_counter++;
     tft_screen.setCursor(30, 51);
     tft_screen.print("OUT OF RANGE");
     if (out_range_counter >= 5) { // within 5 minutes, with a 15-second interval between measurements
-      finaltest = 1; // in startRun(), this is meant to trigger the alarm/notification system -kenton
-      // TODO rename finaltest to something more descriptive.
+      finalStatus = 1; // in startRun(), this is meant to trigger the alarm/notification system
     }
   }
 }
